@@ -42,7 +42,7 @@ class MQTTSubscriptionMgr extends EventEmitter {
             });
         })
 
-        client.on('error', error => console.error('Connection error (${url}):', error))
+        client.on('error', error => console.error(`Connection error (${url}):`, error))
 
         client.on('message', (topic, message) => {
             this.emit('message', url, topic, message.toString());
