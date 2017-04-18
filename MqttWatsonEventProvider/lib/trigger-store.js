@@ -5,6 +5,7 @@ const Promise = require('bluebird');
 class TriggerStore {
     constructor (db) {
         this.db = db;
+        this.cache = {};
     }
 
     add (trigger) {
@@ -15,7 +16,10 @@ class TriggerStore {
     remove (id) {
         const _get = Promise.promisify(this.db.get, {context: this.db});
         const _destroy = Promise.promisify(this.db.destroy, {context: this.db});
-        return _get(id).then(doc => _destroy(doc._id, doc._rev));
+        return _get(id).then(doc => {
+            _destroy(doc._id, doc._rev);
+            delete this.cache[doc.url];
+        });
     }
 
     triggers (url, topic) {
@@ -26,7 +30,12 @@ class TriggerStore {
 
         const _view = Promise.promisify(this.db.view, {context: this.db});
         const extract_triggers = body => body.rows.map(row => row.value);
-        return _view('subscriptions', topic ? 'host_topic_triggers' : 'host_triggers', {startkey: key, endkey: key}).then(extract_triggers);
+        let results = this.cache[key];
+        if (!results) {
+            results = _view('subscriptions', topic ? 'host_topic_triggers' : 'host_triggers', {startkey: key, endkey: key}).then(extract_triggers);
+            this.cache[key] = results;
+        }
+        return results;
     }
 
     subscribers () {
